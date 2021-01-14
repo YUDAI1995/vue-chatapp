@@ -34,7 +34,7 @@ io.on('connection', (socket) => {
 
   // ユーザの参加
   socket.on('setUserName', (userName) => {
-    if(!userName) userName = '匿名';
+    if(!userName) userName = 'unknown';
     userName = "[入室] " + userName;
     socket.userName = userName;
     io.emit('showuserName', userName);
