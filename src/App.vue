@@ -1,129 +1,118 @@
 <template>
-<header>
-  <div class="inner">
-    <h1>Chat02</h1>
-  </div>
-</header>
-<main>
-<div class="inner">
-  <SubmitText @onsubmit='addText_socketio'></SubmitText>
-</div>
-<div class="inner">
-  <Comment :commentList="$data.addedtext" @check="onCheckTodo" @delete="onDeleteTodo" />
-</div>
-<div class="inner">{{ this.addeduserName }}</div>
-</main>
-  <footer>
-  <div class="inner">
-    <p><small class="copy">work</small></p>
-  </div>
-</footer>
+  <main>
+    <template v-if="$data.user">
+      <layout>
+        <Header :room="$data.room" />
+        <chat-area :user="$data.user" :chatList="$data.chatList" />
+        <text-form
+          @submit-text="onSubmitHandler"
+          :socket="$data.socket"
+          :user="$data.user"
+          :room="$data.room"
+        />
+      </layout>
+    </template>
+    <join-room v-else @joinroom-handler="joinRoomHandler" />
+  </main>
+  <Footer />
 </template>
 
 <script>
-import SubmitText from './components/SubmitText.vue'
-import Comment from './components/Comment.vue'
-import io from 'socket.io-client'
-import _ from 'lodash'
+import Header from './components/Header.vue';
+import Footer from './components/Footer.vue';
+import TextForm from './components/TextForm.vue';
+import ChatArea from './components/ChatArea.vue';
+import JoinRoom from './components/JoinRoom.vue';
+import Layout from './components/Layout.vue';
+import io from 'socket.io-client';
 
 export default {
   name: 'App',
   components: {
-    SubmitText,
-    Comment
+    Header,
+    Footer,
+    'text-form': TextForm,
+    'chat-area': ChatArea,
+    'join-room': JoinRoom,
+    layout: Layout,
   },
   data() {
-    const addedtext = [];
     return {
-      socket : io.connect('http://localhost:3030'),
-      addedtask: '',
-      // idを順番につける
-      addedtext: addedtext.map((item, index) => ({ ...item, id: index })),
-      // 次のTODOに降るID番号
-      nextTodoId: addedtext.length,
-      addeduserName:''
-    }
+      socket: io.connect(process.env.VUE_APP_PORT),
+      sendText: '',
+      chatList: [],
+      user: '',
+      room: '',
+    };
   },
   methods: {
-    addText_socketio(text) {
-      this.socket.emit('add', text);
+    joinRoomHandler(data) {
+      this.socket.emit('joinRoom', data);
+      this.user = data.user;
+      this.room = data.room;
     },
-    /**
-     * TODOのチェック
-     * @param {number} todoId - TODOのID
-     */
-    onCheckTodo(todoId) {
-      const todo = _.find(this.$data.todoList, { id: todoId });
-      if (todo) {
-        todo.isDone = !todo.isDone;
-      }
+    onSubmitHandler(text) {
+      this.socket.emit('sendMessage', text);
     },
-    /**
-     * TODOの削除ボタンがクリックされた時
-     * @param {number} todoId - TODOのID
-     */
-    onDeleteTodo(todoId) {
-      const index = _.findIndex(this.$data.addedtext, { id: todoId });
-      if (index !== -1) {
-        this.$data.addedtext.splice(index, 1);
-      }
-    }
   },
   created() {
     this.socket.on('connect', () => {
-      this.socket.emit('setUserName', prompt('ユーザー名を入力してください'));
+      //console.log('connected!');
     });
 
-    this.socket.on('addtext', (text) => {
-      console.log(text);
-      this.$data.addedtext.unshift({
-        id: this.$data.nextTodoId,
-        isDone: false,
-        text: text
-      });
-      this.$data.nextTodoId += 1;
+    this.socket.on('receveMessage', (messageData) => {
+      this.$data.chatList = [...this.$data.chatList, messageData];
     });
-
-    this.socket.on('showuserName', (userName) => {
-      this.$data.addeduserName = userName;
-    });
-  }
-}
+  },
+};
 </script>
 
-<style>
+<style lang="scss">
+@import './style/_variable.scss';
+
 * {
   box-sizing: border-box;
 }
+html {
+  -webkit-text-size-adjust: 100%;
+  font-size: 62.5%;
+}
 body {
-  min-width: 720px;
   margin: 0;
+  padding: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  line-height: 1.5;
+  font-size: 1.8rem;
+  color: $defaultTextColor;
+}
+#app {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 100vh;
 }
 .inner {
   width: 720px;
   margin: 0 auto;
 }
-header {
-  background-color: #f7fbff;
-  box-shadow: 0 0 4px #b9b9b9;
-  margin: 0 0 20px;
-  padding: 20px 6px;
-}
-header h1 {
-  font-size: 26px;
-  padding-left: 12px;
-  display: flex;
-  align-items: center;
-}
 main {
-  min-height: calc(100vh - 237px);
+  display: block;
 }
-footer {
-  background-color: #e7e7e7;
-  margin-top: 20px;
-  padding: 12px 6px;
+a {
+  color: $defaultTextColor;
+  text-decoration: none;
 }
-footer .copy {
-  font-size: 18px;
+ul,
+dl,
+li {
+  margin: 0;
+  padding: 0;
+  display: block;
+}
+input,
+button {
+  outline: 0;
 }
 </style>
